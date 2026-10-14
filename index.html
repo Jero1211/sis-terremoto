@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIS-TERREMOTO | Control de Asistencias y Evacuación de Emergencia</title>
+  <meta name="description" content="Sistema táctico de pase de lista, triage de emergencia y control de asistencias para casos de sismo y terremoto integrado con Hojas de Cálculo Excel y CSV.">
+  
+  <!-- Fuentes Modernas Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Estilos Principales -->
+  <link rel="stylesheet" href="css/styles.css?v=2">
+
+  <!-- SheetJS para manejo de Excel (.xlsx / .csv) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Encabezado de Impresión Oficial (Solo visible en A4 / PDF para Brigadas y COE) -->
+    <div class="print-manifest-header">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 1.25rem;">
+          <div style="background: #002855; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center;">
+            <img src="assets/logo_unilasallista.png" onerror="this.src='https://www.unilasallista.edu.co/wp-content/uploads/2021/02/cropped-Logo_ppl.png'" alt="Unilasallista Logo" style="height: 38px; width: auto; object-fit: contain;">
+          </div>
+          <div>
+            <h2 style="margin: 0; font-size: 1.35rem; color: #0f172a;">MANIFIESTO OFICIAL DE EVACUACIÓN - UNILASALLISTA</h2>
+            <p style="margin: 3px 0 0; font-size: 0.85rem; color: #475569;">Centro de Operaciones de Emergencia (COE) / Brigadas de Rescate Institucionales</p>
+          </div>
+        </div>
+        <div style="text-align: right; font-size: 0.85rem; color: #334155;">
+          <p id="print-datetime" style="margin: 0; font-weight: 700;">Fecha: 21/08/2026</p>
+          <p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">Punto Seguro: Plazoleta Central</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Principal Táctico Limpio y Ejecutivo -->
+    <header class="emergency-topbar">
+      <div class="brand-section">
+        <div class="brand-logo-container" title="Corporación Universitaria Lasallista">
+          <img src="assets/logo_unilasallista.png" onerror="this.src='https://www.unilasallista.edu.co/wp-content/uploads/2021/02/cropped-Logo_ppl.png'" alt="Logo Unilasallista" class="brand-logo-img">
+        </div>
+        <div class="brand-text">
+          <h1>SIS-TERREMOTO <span class="tag">Centro de Operaciones</span></h1>
+          <p>Control Táctico de Evacuación y Pase de Lista en Zonas Seguras</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Acción Principal: Cargar Archivo -->
+        <button id="btn-open-import" class="btn btn-primary" title="Cargar censo desde Excel (.xlsx) o CSV">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <span>Cargar Excel</span>
+        </button>
+
+        <!-- Finalizar Sesión Oficial -->
+        <button id="btn-finish-rollcall" class="btn btn-finish-session" title="Finalizar pase de lista y exportar base de datos oficial (Excel, CSV, JSON, SQL)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          <span>Finalizar y Exportar</span>
+        </button>
+
+        <!-- Descarga Rápida Excel -->
+        <button id="btn-export-excel" class="btn btn-outline" title="Descargar reporte rápido en Excel (.xlsx)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span>Excel</span>
+        </button>
+
+        <!-- Cluster de Herramientas Compacto -->
+        <div class="header-tool-cluster">
+          <button id="btn-download-template" class="btn-tool" title="Descargar plantilla de Excel modelo">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </button>
+          <button id="btn-print-manifest" class="btn-tool" title="Imprimir Acta Oficial para COE y Brigadas">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          </button>
+          <button id="btn-open-docs" class="btn-tool" title="Ver Guía de Usuario y Documentación">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          </button>
+          <button id="btn-toggle-theme" class="btn-tool" title="Alternar tema oscuro / claro">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Métricas KPIs que actúan como Filtros Rápidos (Unificación Inteligente) -->
+    <section class="kpi-section-container">
+      <div class="kpi-grid">
+        <!-- 1. Total Censo -->
+        <button type="button" class="kpi-card status-pill active total" data-status="all" title="Ver todo el personal registrado">
+          <div class="kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Censo Total</span>
+            <div class="kpi-value-row">
+              <span id="kpi-total" class="kpi-number">0</span>
+              <span class="kpi-unit">personas</span>
+            </div>
+            <span id="count-pill-all" style="display: none;">0</span>
+          </div>
+        </button>
+
+        <!-- 2. Presentes -->
+        <button type="button" class="kpi-card status-pill safe" data-status="safe" title="Filtrar personas presentes">
+          <div class="kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Presentes</span>
+            <div class="kpi-value-row">
+              <span id="kpi-safe" class="kpi-number">0</span>
+              <span id="kpi-safe-pct" class="kpi-percent">(0%)</span>
+            </div>
+            <span id="count-pill-safe" style="display: none;">0</span>
+          </div>
+        </button>
+
+        <!-- 3. Ausentes -->
+        <button type="button" class="kpi-card status-pill absent" data-status="absent" title="Filtrar ausentes (no asistieron al campus hoy)">
+          <div class="kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="18" y1="8" x2="23" y2="13"/><line x1="23" y1="8" x2="18" y2="13"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Ausentes</span>
+            <div class="kpi-value-row">
+              <span id="kpi-absent" class="kpi-number">0</span>
+              <span id="kpi-absent-pct" class="kpi-percent">(0%)</span>
+            </div>
+            <span id="count-pill-absent" style="display: none;">0</span>
+          </div>
+        </button>
+
+        <!-- 4. Faltantes (Paradero desconocido tras sismo) -->
+        <button type="button" class="kpi-card status-pill missing" data-status="missing" title="Filtrar faltantes (no localizados tras el terremoto)">
+          <div class="kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Faltantes</span>
+            <div class="kpi-value-row">
+              <span id="kpi-missing" class="kpi-number">0</span>
+              <span id="kpi-missing-pct" class="kpi-percent">(0%)</span>
+            </div>
+            <span id="count-pill-missing" style="display: none;">0</span>
+          </div>
+        </button>
+
+        <!-- 5. Heridos -->
+        <button type="button" class="kpi-card status-pill injured" data-status="injured" title="Filtrar heridos en atención médica">
+          <div class="kpi-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+          <div class="kpi-info">
+            <span class="kpi-label">Heridos</span>
+            <div class="kpi-value-row">
+              <span id="kpi-injured" class="kpi-number">0</span>
+              <span id="kpi-injured-pct" class="kpi-percent">(0%)</span>
+            </div>
+            <span id="count-pill-injured" style="display: none;">0</span>
+          </div>
+        </button>
+
+        <!-- Campos ocultos para compatibilidad JS -->
+        <span id="kpi-other" style="display: none;">0</span>
+        <span id="kpi-other-pct" style="display: none;">(0%)</span>
+        <span id="count-pill-other" style="display: none;">0</span>
+      </div>
+
+      <!-- Barra de Progreso Integrada y Delgada -->
+      <div class="progress-bar-slim-wrapper">
+        <div class="progress-bar-header">
+          <span class="progress-title-sub">Progreso Global de Evacuación:</span>
+          <span id="progress-text" class="progress-meta">0% Verificado</span>
+        </div>
+        <div class="progress-bar-wrapper">
+          <div id="bar-safe" class="bar-segment safe" style="width: 0%;" title="Presentes"></div>
+          <div id="bar-injured" class="bar-segment injured" style="width: 0%;" title="Heridos"></div>
+          <div id="bar-other" class="bar-segment other" style="width: 0%;" title="Otra Zona"></div>
+          <div id="bar-missing" class="bar-segment missing" style="width: 100%;" title="Faltantes"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Barra de Control Táctica Unificada (Buscador, Escáner, Punto Seguro y Acciones) -->
+    <section class="command-toolbar">
+      <div class="toolbar-primary-row">
+        <!-- Buscador Rápido de Lista -->
+        <div class="search-field">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" id="search-input" placeholder="Buscar por Nombre, DNI, Profesor o Aula...">
+        </div>
+
+        <!-- Escáner DNI con Enter -->
+        <div class="scanner-field" title="Escanee el carnet o digite el DNI y presione Enter para registrar a salvo inmediatamente">
+          <span class="icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="7" y2="16"/><line x1="11" y1="8" x2="11" y2="16"/><line x1="14" y1="8" x2="14" y2="12"/><line x1="17" y1="8" x2="17" y2="16"/></svg>
+          </span>
+          <input type="text" id="quick-scan-input" placeholder="Escanear DNI o ID + Enter" autocomplete="off">
+        </div>
+
+        <!-- Punto Seguro Activo -->
+        <div class="zone-selector-wrapper" title="Zona segura donde la brigada está registrando la evacuación">
+          <span class="zone-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </span>
+          <select id="active-zone-select" class="zone-select">
+            <option value="Plazoleta Central" selected>Plazoleta Central (Principal)</option>
+            <option value="Bloque A">Bloque A</option>
+            <option value="Bloque B">Bloque B</option>
+            <option value="Bloque C">Bloque C</option>
+            <option value="Administrativo">Administrativo</option>
+            <option value="Cafetería">Cafetería</option>
+            <option value="Biblioteca">Biblioteca</option>
+            <option value="Bloque de Veterinaria">Bloque de Veterinaria</option>
+          </select>
+        </div>
+
+        <!-- Botones de Acción Inmediata -->
+        <div class="toolbar-actions">
+          <button id="btn-open-add-person" class="btn btn-outline-sm" title="Agregar persona manualmente al censo">
+            + Agregar
+          </button>
+          <button id="btn-mark-all-visible" class="btn btn-outline-sm" title="Marcar grupo visible actual como Presentes">
+            Marcar Presentes
+          </button>
+          <button type="button" id="btn-toggle-filters" class="btn btn-outline-sm btn-filter-toggle" title="Mostrar/Ocultar filtros avanzados">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            <span>Filtros</span>
+          </button>
+          <button id="btn-reset-drill" class="btn btn-icon-sm" title="Reiniciar pase de lista (todos vuelven a Faltante)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+          <!-- Botón oculto para compatibilidad JS -->
+          <button id="btn-quick-finish" style="display: none;"></button>
+        </div>
+      </div>
+
+      <!-- Barra de Filtros Avanzados (Colapsable) -->
+      <div id="advanced-filters-bar" class="advanced-filters-bar">
+        <div class="filter-item">
+          <label for="filter-teacher">Profesor:</label>
+          <select id="filter-teacher" class="filter-select">
+            <option value="all">Todos los Profesores</option>
+            <option value="Prof. Feibert Guzmán">Prof. Feibert Guzmán</option>
+            <option value="Ing. Guillermo Paredes Vega">Ing. Guillermo Paredes Vega</option>
+            <option value="Dra. Carmen Benavides">Dra. Carmen Benavides</option>
+            <option value="Centro de Operaciones (COE)">Centro de Operaciones (COE)</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filter-location">Ubicación:</label>
+          <select id="filter-location" class="filter-select">
+            <option value="all">Todas las Ubicaciones</option>
+            <option value="classroom">En el Salón / Aula Base</option>
+            <option value="safe_zone">En Zona Segura (Evacuado)</option>
+            <option value="other">En Otra Parte (Fuera)</option>
+            <option value="transit">En Tránsito / Escaleras</option>
+            <option value="trapped">🆘 Atrapado / Incomunicado</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filter-zone">Zona Asignada:</label>
+          <select id="filter-zone" class="filter-select">
+            <option value="all">Todas las Zonas</option>
+            <option value="Plazoleta Central">Plazoleta Central</option>
+            <option value="Bloque A">Bloque A</option>
+            <option value="Bloque B">Bloque B</option>
+            <option value="Bloque C">Bloque C</option>
+            <option value="Administrativo">Administrativo</option>
+            <option value="Cafetería">Cafetería</option>
+            <option value="Biblioteca">Biblioteca</option>
+            <option value="Bloque de Veterinaria">Bloque de Veterinaria</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filter-role">Rol Institucional:</label>
+          <select id="filter-role" class="filter-select">
+            <option value="all">Todos los Roles</option>
+            <option value="Estudiante">Estudiantes</option>
+            <option value="Docente">Docentes</option>
+            <option value="Brigadista">Brigadistas</option>
+            <option value="Administrativo">Administrativos</option>
+            <option value="Personal de Servicio">Personal de Servicio</option>
+            <option value="Visitante">Visitantes</option>
+            <option value="special">Movilidad Reducida / Salud</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Lista / Tabla Nominal de Asistencias y Evacuación -->
+    <main id="roster-container" class="roster-container">
+      <table class="roster-table">
+        <thead>
+          <tr>
+            <th style="width: 24%;">Persona / Identificación</th>
+            <th style="width: 18%;">Profesor Encargado</th>
+            <th style="width: 20%;">¿Dónde se encuentra?</th>
+            <th style="width: 14%;">Punto de Encuentro</th>
+            <th style="width: 18%; text-align: center;">Control de Estado</th>
+            <th style="width: 6%; text-align: right;">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="roster-tbody">
+          <!-- Renderizado dinámico desde app.js -->
+        </tbody>
+      </table>
+
+      <!-- Bloque de Firmas Oficiales para Impresión (Acta de Cierre) -->
+      <div class="print-signature-block">
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <p class="signature-name" id="print-teacher-name">Prof. Feibert Guzmán</p>
+          <p class="signature-title">Profesor / Docente a Cargo</p>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <p class="signature-name">Marco Antonio Vargas</p>
+          <p class="signature-title">Líder de Brigada de Evacuación</p>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <p class="signature-name">Centro de Operaciones (COE)</p>
+          <p class="signature-title">Coordinación de Emergencias</p>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==========================================================================
+       MODALES
+       ========================================================================== -->
+
+  <!-- Modal 1: Importar Hoja de Cálculo (Excel / CSV) -->
+  <div id="modal-import" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          Cargar Hoja de Cálculo de Personal
+        </div>
+        <button class="modal-close" data-close="modal-import">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Suba el censo de estudiantes, docentes y colaboradores en formato <strong>.xlsx, .xls o .csv</strong>. El sistema mapeará automáticamente las columnas y asignará al docente y materia indicados.
+        </p>
+
+        <!-- Campos de Docente y Materia para la Carga -->
+        <div class="import-meta-box" style="background: rgba(59, 130, 246, 0.08); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+          <div style="font-size: 0.85rem; font-weight: 700; color: var(--accent-primary); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.4rem;">
+            <span>Datos del Docente y Clase / Asignatura Responsable</span>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+              <label for="import-teacher-name" style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Docente / Profesor Encargado *</label>
+              <input type="text" id="import-teacher-name" placeholder="Ej. Prof. Feibert Guzmán" value="Prof. Feibert Guzmán" style="width: 100%; padding: 0.55rem 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-family: inherit;">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+              <label for="import-course-name" style="font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.35rem;">Clase / Asignatura / Grupo *</label>
+              <input type="text" id="import-course-name" placeholder="Ej. Ingeniería de Software" value="Ingeniería de Software" style="width: 100%; padding: 0.55rem 0.8rem; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-main); font-family: inherit;">
+            </div>
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; margin-bottom: 0;">
+            ℹ️ Los estudiantes importados desde el archivo Excel se vincularán automáticamente a este docente y clase.
+          </p>
+        </div>
+
+        <div id="dropzone" class="dropzone">
+          <div class="dropzone-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <p style="font-weight: 700; margin-bottom: 0.3rem;">Arrastre su archivo Excel aquí</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">o haga clic para seleccionar desde su equipo</p>
+          <input type="file" id="file-input" accept=".xlsx, .xls, .csv" style="display: none;">
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('file-input').click()">
+            Explorar Archivos
+          </button>
+        </div>
+
+        <div style="margin-top: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">¿No tienes el formato oficial?</span>
+          <button type="button" id="btn-modal-template" class="btn btn-outline" style="font-size: 0.8rem;">
+            Descargar Plantilla Modelo
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-close="modal-import">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Triaje Médico y Registro de Incidentes -->
+  <div id="modal-triage" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="triage-person-name">Ficha Médica y Triage de Emergencia</span>
+        </div>
+        <button class="modal-close" data-close="modal-triage">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="triage-person-id">
+
+        <div class="form-group">
+          <label>Nivel de Gravedad / Triage START</label>
+          <select id="triage-severity">
+            <option value="none">Sin Lesiones / Ileso</option>
+            <option value="green">Verde (Leve / Puede caminar)</option>
+            <option value="yellow">Amarillo (Moderado / Requiere atención sin riesgo vital inmediato)</option>
+            <option value="red">ROJO (Grave / Prioridad 1 Urgente para Paramédicos)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Última Ubicación Conocida / Lugar del Incidente</label>
+          <input type="text" id="triage-location" placeholder="Ej. Pabellón B - Pasillo 2do piso cerca a escaleras">
+        </div>
+
+        <div class="form-group">
+          <label>Descripción de Lesiones / Observaciones de Rescate</label>
+          <textarea id="triage-notes" placeholder="Describa síntomas, hemorragias, fracturas, crisis de pánico o medicamentos administrados..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Contacto de Emergencia / Familiar</label>
+          <input type="text" id="triage-emergency-contact" placeholder="Nombre y Teléfono">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-close="modal-triage">Cancelar</button>
+        <button id="btn-save-triage" class="btn btn-warning">Guardar Ficha de Triage</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 3: Agregar / Editar Persona Manual -->
+  <div id="modal-person" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="modal-person-title">Registrar Persona en el Censo</span>
+        </div>
+        <button class="modal-close" data-close="modal-person">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="edit-person-id">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Código / ID *</label>
+            <input type="text" id="input-person-id" placeholder="Ej. EST-1050" required>
+          </div>
+          <div class="form-group">
+            <label>DNI / Documento</label>
+            <input type="text" id="input-person-dni" placeholder="Ej. 72819203">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Nombre Completo *</label>
+          <input type="text" id="input-person-name" placeholder="Nombres y Apellidos" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Rol</label>
+            <select id="input-person-role">
+              <option value="Estudiante">Estudiante</option>
+              <option value="Docente">Docente</option>
+              <option value="Brigadista">Brigadista</option>
+              <option value="Administrativo">Administrativo</option>
+              <option value="Personal de Servicio">Personal de Servicio</option>
+              <option value="Visitante">Visitante</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Profesor / Docente Encargado *</label>
+            <input type="text" id="input-person-teacher" placeholder="Ej. Prof. Feibert Guzmán" value="Prof. Feibert Guzmán">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Facultad / Carrera / Asignatura</label>
+            <input type="text" id="input-person-dept" placeholder="Ej. Ing. Informática 2" value="Ing. Informática 2">
+          </div>
+          <div class="form-group">
+            <label>Ubicación Base (Pabellón/Aula)</label>
+            <input type="text" id="input-person-location" placeholder="Ej. Pabellón A - Aula 302">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>¿Dónde se encuentra actualmente?</label>
+            <select id="input-person-loc-status">
+              <option value="classroom">En el Salón / Aula Base</option>
+              <option value="safe_zone">En Zona Segura (Evacuado)</option>
+              <option value="other">En Otra Parte (Fuera del Aula)</option>
+              <option value="transit">En Tránsito / Escaleras</option>
+              <option value="trapped">Atrapado / Incomunicado</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Detalle de Ubicación Actual</label>
+            <input type="text" id="input-person-loc-detail" placeholder="Ej. Aula 302, Cafetería, Biblioteca Piso 2">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Punto de Encuentro Asignado</label>
+            <select id="input-person-zone">
+              <option value="Plazoleta Central" selected>Plazoleta Central (Punto Seguro)</option>
+              <option value="Bloque A">Bloque A</option>
+              <option value="Bloque B">Bloque B</option>
+              <option value="Bloque C">Bloque C</option>
+              <option value="Administrativo">Administrativo</option>
+              <option value="Cafetería">Cafetería</option>
+              <option value="Biblioteca">Biblioteca</option>
+              <option value="Bloque de Veterinaria">Bloque de Veterinaria</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Teléfono Móvil</label>
+            <input type="text" id="input-person-phone" placeholder="Ej. +57 300 123 4567">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Condición Especial de Salud</label>
+            <input type="text" id="input-person-condition" placeholder="Ej. Movilidad reducida, Asma, Ninguna">
+          </div>
+          <div class="form-group">
+            <label>Contacto de Emergencia</label>
+            <input type="text" id="input-person-contact" placeholder="Ej. Carlos Mendoza - 300 987 6543">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" data-close="modal-person">Cancelar</button>
+        <button id="btn-save-person" class="btn btn-primary">Guardar Persona</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 4: Finalizar Pase de Lista y Exportar Base de Datos del Profesor -->
+  <div id="modal-finish-session" class="modal-backdrop">
+    <div class="modal-box modal-box-lg">
+      <div class="modal-header" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(16, 185, 129, 0.15));">
+        <div class="modal-title">
+          Cierre de Pase de Lista y Exportación de Base de Datos
+        </div>
+        <button class="modal-close" data-close="modal-finish-session">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+          Pase de lista completado. Ingrese los datos de la sesión para generar y exportar la base de datos oficial para la institución, brigadistas o dirección académica.
+        </p>
+
+        <!-- Banner de Métricas de la Sesión -->
+        <div class="session-kpi-banner">
+          <div class="session-stat-item">
+            <span class="session-stat-label">Total en Lista</span>
+            <span id="finish-stat-total" class="session-stat-value">0</span>
+          </div>
+          <div class="session-stat-item safe">
+            <span class="session-stat-label">Presentes</span>
+            <span id="finish-stat-safe" class="session-stat-value">0</span>
+          </div>
+          <div class="session-stat-item missing">
+            <span class="session-stat-label">Faltantes</span>
+            <span id="finish-stat-missing" class="session-stat-value">0</span>
+          </div>
+          <div class="session-stat-item injured">
+            <span class="session-stat-label">Heridos</span>
+            <span id="finish-stat-injured" class="session-stat-value">0</span>
+          </div>
+        </div>
+
+        <!-- Formulario de Metadatos del Docente / Curso -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Docente / Profesor a Cargo *</label>
+            <input type="text" id="finish-teacher" placeholder="Ej. Prof. Feibert Guzmán" value="Prof. Feibert Guzmán">
+          </div>
+          <div class="form-group">
+            <label>Curso / Asignatura / Grupo *</label>
+            <input type="text" id="finish-course" placeholder="Ej. Ingeniería de Software" value="Ingeniería de Software">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Aula / Bloque de Origen</label>
+            <input type="text" id="finish-classroom" placeholder="Ej. Bloque A - Aula 201" value="Bloque A - Aula 201">
+          </div>
+          <div class="form-group">
+            <label>Punto de Encuentro / Zona Segura</label>
+            <input type="text" id="finish-zone" placeholder="Ej. Plazoleta Central" value="Plazoleta Central">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Observaciones Generales del Docente / Reporte de Incidencias</label>
+          <textarea id="finish-notes" placeholder="Describa el comportamiento del grupo, traslados a enfermería o novedades...">Evacuación completada ordenadamente siguiendo las rutas de emergencia. Pase de lista finalizado con éxito en el punto de encuentro.</textarea>
+        </div>
+
+        <!-- Opciones de Exportación de Base de Datos -->
+        <div style="margin-top: 1.5rem;">
+          <label style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.8rem;">
+            Seleccione el Formato de Base de Datos para Exportar:
+          </label>
+          
+          <div class="export-options-grid">
+            <!-- 1: Excel -->
+            <div class="export-card" id="btn-export-opt-excel">
+              <div class="export-card-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+              <div class="export-card-info">
+                <h4>Libro Excel (.xlsx)</h4>
+                <p>2 Hojas: Resumen Ejecutivo COE con estadísticas + Nómina Completa con horas y triage.</p>
+              </div>
+              <button type="button" class="btn btn-success" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;">
+                Descargar Excel
+              </button>
+            </div>
+
+            <!-- 2: CSV -->
+            <div class="export-card" id="btn-export-opt-csv">
+              <div class="export-card-icon" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
+              <div class="export-card-info">
+                <h4>Base de Datos CSV (.csv)</h4>
+                <p>Formato estándar delimitado por comas (UTF-8 con BOM) para Google Sheets, Excel o BDs.</p>
+              </div>
+              <button type="button" class="btn btn-primary" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;">
+                Descargar CSV
+              </button>
+            </div>
+
+            <!-- 3: JSON -->
+            <div class="export-card" id="btn-export-opt-json">
+              <div class="export-card-icon" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+              <div class="export-card-info">
+                <h4>Base de Datos JSON (.json)</h4>
+                <p>Estructura JSON completa con metadatos del docente, auditoría, KPIs y registros.</p>
+              </div>
+              <button type="button" class="btn btn-warning" style="font-size: 0.8rem; padding: 0.45rem 0.9rem;">
+                Descargar JSON
+              </button>
+            </div>
+
+            <!-- 4: SQL -->
+            <div class="export-card" id="btn-export-opt-sql">
+              <div class="export-card-icon" style="background: rgba(139, 92, 246, 0.15); color: #c4b5fd;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></div>
+              <div class="export-card-info">
+                <h4>Script SQL (.sql)</h4>
+                <p>Instrucciones CREATE TABLE e INSERT INTO listas para PostgreSQL, MySQL o SQLite.</p>
+              </div>
+              <button type="button" class="btn btn-outline" style="font-size: 0.8rem; padding: 0.45rem 0.9rem; border-color: #8b5cf6; color: #c4b5fd;">
+                Descargar SQL
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="justify-content: space-between;">
+        <button type="button" id="btn-finish-print-acta" class="btn btn-outline">Imprimir Acta Oficial con Firma</button>
+        <button type="button" class="btn btn-outline" data-close="modal-finish-session">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 5: Centro de Documentación y Guías del Sistema -->
+  <div id="modal-docs" class="modal-backdrop">
+    <div class="modal-box modal-box-xl">
+      <div class="modal-header" style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.25), rgba(99, 102, 241, 0.18));">
+        <div class="modal-title" style="display: flex; align-items: center; gap: 0.6rem;">
+          <span>Centro de Documentación y Manual de Usuario</span>
+          <span class="badge-role" style="font-size: 0.72rem; background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.4); padding: 2px 8px; border-radius: 4px;">SIS-TERREMOTO v1.5</span>
+        </div>
+        <button class="modal-close" data-close="modal-docs">&times;</button>
+      </div>
+
+      <!-- Barra de Pestañas de la Documentación -->
+      <div class="docs-tabs-nav">
+        <button class="doc-tab-btn active" data-tab="tab-doc-quickstart">1. Guía Rápida</button>
+        <button class="doc-tab-btn" data-tab="tab-doc-teacher">2. Docente & Ubicaciones</button>
+        <button class="doc-tab-btn" data-tab="tab-doc-exports">3. Base de Datos</button>
+        <button class="doc-tab-btn" data-tab="tab-doc-mongo">4. MongoDB (Compass & CLI)</button>
+        <button class="doc-tab-btn" data-tab="tab-doc-cloudflare">5. Túnel Cloudflare (Móvil)</button>
+        <button class="doc-tab-btn" data-tab="tab-doc-protocols">6. Triaje START & Protocolos</button>
+      </div>
+
+      <div class="modal-body docs-modal-body">
+        
+        <!-- Pestaña 1: Guía Rápida & Pase de Lista -->
+        <div id="tab-doc-quickstart" class="doc-tab-content active">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Flujo Operativo de Evacuación - Unilasallista</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              El sistema <strong>UNILASALLISTA EVACUACIÓN</strong> está optimizado para funcionar de manera 100% autónoma y offline en la <strong>Plazoleta Central</strong>, teléfonos móviles y computadoras de brigadistas.
+            </p>
+            
+            <div class="doc-steps-grid">
+              <div class="doc-step-card">
+                <div class="step-num">1</div>
+                <h4>1. Cargar Censo</h4>
+                <p>Abra <strong>"Cargar Excel"</strong>, ingrese el nombre del docente y asignatura, y cargue la lista de estudiantes.</p>
+              </div>
+
+              <div class="doc-step-card">
+                <div class="step-num">2</div>
+                <h4>2. Concentración en Zona Segura</h4>
+                <p>El grupo se desplaza al punto de encuentro seguro (<strong>Plazoleta Central</strong>). Seleccione su punto activo en la barra superior.</p>
+              </div>
+
+              <div class="doc-step-card">
+                <div class="step-num">3</div>
+                <h4>3. Pase de Asistencia a 1 Clic</h4>
+                <p>Al ver a cada estudiante, presione <strong>"Presente"</strong>. Su hora y ubicación se guardarán al segundo. O use el <strong>Escáner de DNI</strong> con <code>Enter</code>.</p>
+              </div>
+
+              <div class="doc-step-card">
+                <div class="step-num">4</div>
+                <h4>4. Finalizar y Exportar</h4>
+                <p>Al completar el censo, presione <strong>"Finalizar Pase de Lista"</strong> para exportar la base de datos oficial en Excel, CSV, JSON o SQL para las autoridades.</p>
+              </div>
+            </div>
+
+            <div class="doc-alert info" style="margin-top: 1.25rem;">
+              <strong>Consejo Operativo:</strong> Si tiene a todo el grupo presente en la Plazoleta Central, presione <strong>"Marcar Presentes"</strong> para registrarlos a todos en un solo clic.
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 2: Control de Docente & Ubicaciones -->
+        <div id="tab-doc-teacher" class="doc-tab-content">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Gestión del Docente y Zonas del Campus</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              La aplicación permite a cada docente gestionar a su grupo de estudiantes de forma independiente, visualizando su ubicación exacta en el campus durante la emergencia.
+            </p>
+
+            <div class="doc-feature-box">
+              <h4>1. Filtro por Docente</h4>
+              <p>En la barra de filtros, seleccione el docente correspondiente. La tabla filtrará al instante a todos los alumnos a su cargo.</p>
+            </div>
+
+            <div class="doc-feature-box">
+              <h4>2. Seguimiento de Ubicación</h4>
+              <p>Durante una evacuación, los estudiantes no siempre están en su aula base. El sistema clasifica en tiempo real:</p>
+              <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem;">
+                <div><span class="location-tag in-classroom">En el Salón</span>: El alumno estaba dentro del aula base (ej. <em>Bloque A - Aula 201</em>).</div>
+                <div><span class="location-tag in-safe">En Zona Segura</span>: Ya evacuó y se encuentra en la <strong>Plazoleta Central</strong>.</div>
+                <div><span class="location-tag in-other">Fuera del Aula</span>: Estaba fuera del aula (ej. <em>Cafetería</em>, <em>Biblioteca</em>, <em>Bloque de Veterinaria</em>).</div>
+                <div><span class="location-tag in-transit">En Tránsito</span>: Evacuando activamente por escaleras o pasillos de emergencia.</div>
+                <div><span class="location-tag in-trapped">ATRAPADO</span>: No puede salir / Alerta prioritaria para brigadas y bomberos.</div>
+              </div>
+            </div>
+
+            <div class="doc-feature-box">
+              <h4>3. Registrar o Editar Estudiantes</h4>
+              <p>Haga clic en <strong>"Agregar Persona"</strong> o en el botón de editar de cualquier fila para actualizar los datos, profesor a cargo y su ubicación actual.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 3: Base de Datos y Formatos de Exportación -->
+        <div id="tab-doc-exports" class="doc-tab-content">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Formatos de Base de Datos Disponibles</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              Al hacer clic en <strong>"Finalizar y Exportar"</strong>, el profesor puede exportar la sesión en 4 formatos profesionales:
+            </p>
+
+            <div class="doc-table-wrapper">
+              <table class="doc-table">
+                <thead>
+                  <tr>
+                    <th>Formato</th>
+                    <th>Extensión</th>
+                    <th>Uso Recomendado</th>
+                    <th>Detalles Técnicos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Excel Ejecutivo</strong></td>
+                    <td><code>.xlsx</code></td>
+                    <td>Informe para Dirección / Decanatura</td>
+                    <td>2 hojas: Resumen con KPIs y lista nominal completa con horas.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Base de Datos CSV</strong></td>
+                    <td><code>.csv</code></td>
+                    <td>Excel, Google Sheets, MongoDB</td>
+                    <td>Delimitado por comas con codificación UTF-8 BOM para tildes.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Base de Datos JSON</strong></td>
+                    <td><code>.json</code></td>
+                    <td>MongoDB, APIs REST, Node.js</td>
+                    <td>Estructura documental con metadatos del docente, auditoría y registros.</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Script SQL</strong></td>
+                    <td><code>.sql</code></td>
+                    <td>PostgreSQL, MySQL, SQLite, SQL Server</td>
+                    <td>Sentencias <code>CREATE TABLE</code> e <code>INSERT INTO</code> automáticas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 4: Subir a MongoDB -->
+        <div id="tab-doc-mongo" class="doc-tab-content">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Cómo Cargar los Datos en MongoDB</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              Puede importar la base de datos descargada de la aplicación a su MongoDB local mediante la interfaz gráfica (Compass) o mediante la consola de comandos.
+            </p>
+
+            <div class="doc-feature-box">
+              <h4>Método A: Con MongoDB Compass (Fácil / Interfaz Gráfica)</h4>
+              <ol class="doc-num-list">
+                <li>Abra <strong>MongoDB Compass</strong> y presione <strong>"Connect"</strong> (<code>mongodb://localhost:27017</code>).</li>
+                <li>Haga clic en <strong>"Create Database"</strong>:
+                  <ul>
+                    <li>Database Name: <code>sistemas_evacuacion</code></li>
+                    <li>Collection Name: <code>asistencias_sismo</code></li>
+                  </ul>
+                </li>
+                <li>Entre a la colección creada y haga clic en <strong>"Add Data" -> "Import JSON or CSV File"</strong>.</li>
+                <li>Seleccione el archivo <code>Base_Datos_Sismo_....json</code> o <code>.csv</code> descargado de la app.</li>
+                <li>Haga clic en <strong>"Import"</strong>. ¡Todos los estudiantes y estados quedarán almacenados en la base de datos!</li>
+              </ol>
+            </div>
+
+            <div class="doc-feature-box">
+              <h4>Método B: Mediante Línea de Comandos (CLI con mongoimport)</h4>
+              <p>Abra PowerShell o CMD en la carpeta donde descargó el archivo y ejecute:</p>
+
+              <div class="doc-code-block">
+                <div class="code-title">Para archivo CSV:</div>
+                <code>mongoimport --db sistemas_evacuacion --collection asistencias_sismo --type csv --headerline --file "Base_Datos_Asistencia_Sismo.csv"</code>
+              </div>
+
+              <div class="doc-code-block">
+                <div class="code-title">Para archivo JSON:</div>
+                <code>mongoimport --db sistemas_evacuacion --collection asistencias_sismo --file "Base_Datos_Sismo.json" --jsonArray</code>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 5: Túnel Cloudflare para Celulares -->
+        <div id="tab-doc-cloudflare" class="doc-tab-content">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Acceso Móvil Remoto con Cloudflare Tunnel</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              Para que los profesores y brigadistas puedan llamar lista desde sus celulares durante el simulacro sin necesidad de WiFi local ni abrir puertos:
+            </p>
+
+            <div class="doc-steps-grid">
+              <div class="doc-step-card">
+                <div class="step-num">1</div>
+                <h4>Ejecutar Lanzador</h4>
+                <p>Haga doble clic en el archivo <code>iniciar_con_tunel_cloudflare.bat</code> en la carpeta del proyecto.</p>
+              </div>
+
+              <div class="doc-step-card">
+                <div class="step-num">2</div>
+                <h4>Obtener Enlace Público</h4>
+                <p>La consola generará una URL segura como: <code>https://xxxxx.trycloudflare.com</code>.</p>
+              </div>
+
+              <div class="doc-step-card">
+                <div class="step-num">3</div>
+                <h4>Abrir en el Celular</h4>
+                <p>Envíe el enlace por WhatsApp o ábralo en el navegador del teléfono. ¡Funciona desde cualquier parte!</p>
+              </div>
+            </div>
+
+            <div class="doc-alert success" style="margin-top: 1.25rem;">
+              <strong>Seguridad:</strong> El túnel incluye cifrado HTTPS / TLS automático de Cloudflare de nivel empresarial sin costo alguno.
+            </div>
+          </div>
+        </div>
+
+        <!-- Pestaña 6: Triaje START & Protocolos -->
+        <div id="tab-doc-protocols" class="doc-tab-content">
+          <div class="doc-section">
+            <h3 style="color: #38bdf8; margin-bottom: 0.75rem;">Protocolo de Triaje Médico START y Acta Oficial</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.25rem;">
+              Norma de primeros auxilios y clasificación de heridos en catástrofes para equipos de rescate:
+            </p>
+
+            <div class="triage-cards-grid">
+              <div class="triage-item green">
+                <div class="triage-tag" style="color: #34d399; font-weight: 700; margin-bottom: 0.3rem;">VERDE (Leve)</div>
+                <p style="font-size: 0.82rem; color: var(--text-muted);">Lesiones menores, raspones o crisis de ansiedad leve. Puede caminar y colaborar.</p>
+              </div>
+              <div class="triage-item yellow">
+                <div class="triage-tag" style="color: #fbbf24; font-weight: 700; margin-bottom: 0.3rem;">AMARILLO (Moderado)</div>
+                <p style="font-size: 0.82rem; color: var(--text-muted);">Crisis asmática, cortes con sangrado controlado o contusiones. Requiere atención de brigada.</p>
+              </div>
+              <div class="triage-item red">
+                <div class="triage-tag" style="color: #f87171; font-weight: 700; margin-bottom: 0.3rem;">ROJO (Grave / Urgente)</div>
+                <p style="font-size: 0.82rem; color: var(--text-muted);">Atrapado en escombros, inconsciencia o hemorragia severa. Prioridad 1 para Bomberos.</p>
+              </div>
+            </div>
+
+            <div class="doc-feature-box" style="margin-top: 1.25rem;">
+              <h4>Acta Oficial de Cierre con Firmas</h4>
+              <p>Presione <strong>"Imprimir Acta Oficial con Firma"</strong> para obtener el manifiesto físico en hoja A4 listo para la firma del <strong>Prof. Feibert Guzmán</strong>, el Líder de Brigada y el Jefe del COE.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button type="button" class="btn btn-primary" data-close="modal-docs">Entendido, Cerrar Guía</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Contenedor de Notificaciones Toast -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts de la Aplicación -->
+  <script src="js/sound.js?v=3"></script>
+  <script src="js/excel-handler.js?v=3"></script>
+  <script src="js/app.js?v=3"></script>
+</body>
+</html>
